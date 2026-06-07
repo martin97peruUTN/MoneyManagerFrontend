@@ -3,6 +3,7 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useRouter,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
@@ -12,8 +13,9 @@ import type { QueryClient } from '@tanstack/react-query'
 import { Toaster } from 'sonner'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
-import { fetchSessionFn } from '#/lib/auth'
-import { AuthProvider } from '#/lib/auth-client'
+import { fetchUserFn } from '#/lib/session'
+import { authClient } from '#/lib/auth-client'
+import { setUnauthorizedHandler } from '#/lib/api'
 import { TooltipProvider } from '#/components/ui/tooltip'
 import { initThemeFromStorage, useTheme } from '#/lib/store'
 import type { SessionUser } from '#/types'
@@ -36,31 +38,40 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   beforeLoad: async (): Promise<{ user: SessionUser | null }> => {
-    const { user } = await fetchSessionFn()
+    const { user } = await fetchUserFn()
     return { user }
   },
   component: RootComponent,
 })
 
 function RootComponent() {
-  const { user } = Route.useRouteContext()
   return (
     <RootDocument>
-      <AuthProvider user={user}>
-        <TooltipProvider delayDuration={200}>
-          <Outlet />
-        </TooltipProvider>
-      </AuthProvider>
+      <TooltipProvider delayDuration={200}>
+        <Outlet />
+      </TooltipProvider>
     </RootDocument>
   )
 }
 
 function RootDocument({ children }: { children: ReactNode }) {
   const theme = useTheme()
+  const router = useRouter()
 
   useEffect(() => {
     initThemeFromStorage()
   }, [])
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      void authClient.signOut().finally(() => {
+        void router.invalidate().then(() => {
+          void router.navigate({ to: '/login' })
+        })
+      })
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [router])
 
   return (
     <html lang="en" suppressHydrationWarning>

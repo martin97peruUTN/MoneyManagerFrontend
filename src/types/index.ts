@@ -1,10 +1,11 @@
-export type Role = 'User' | 'Admin'
+export type Role = 'admin' | 'user'
 
 export interface SessionUser {
-  id: number
-  username: string
+  id: string
+  email: string
   name: string
-  lastname: string
+  lastname: string | null
+  image: string | null
   role: Role
 }
 
@@ -20,7 +21,7 @@ export interface Account {
   name: string
   balance: number
   currencyId: number
-  userId: number
+  userId: string
 }
 
 export interface TransactionCategory {
@@ -28,7 +29,7 @@ export interface TransactionCategory {
   name: string
   isExpense: boolean
   public: boolean
-  userId: number | null
+  userId: string | null
 }
 
 export interface Transaction {
@@ -51,10 +52,10 @@ export interface Transfer {
 }
 
 export interface AdminUser {
-  id: number
-  username: string
+  id: string
+  email: string
   name: string
-  lastname: string
+  lastname: string | null
   role: Role
 }
 

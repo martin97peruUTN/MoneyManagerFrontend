@@ -1,16 +1,12 @@
-import { createServerFn } from '@tanstack/react-start'
-import { getBackendToken } from '#/lib/auth.server'
+import { API_URL } from '#/lib/auth-client'
 
 /**
  * Authed API layer.
  *
- * `apiRequestFn` is a TanStack Start server function: it reads the backend JWT
- * from the sealed session cookie (server-only) and proxies the request to the
- * Express API with an `Authorization: Bearer` header. Because the backend
- * scopes every resource to the JWT's user, this generic proxy is equivalent to
- * the user calling the backend directly — the JWT just never touches the
- * browser. The client `api()` helper unwraps the result and triggers the
- * unauthorized handler on 401/403.
+ * Requests go directly to the Express backend with `credentials: 'include'`, so
+ * the Better Auth session cookie (set on the backend origin) is sent
+ * automatically. The backend scopes every resource to the session user. On
+ * 401/403 the registered unauthorized handler signs the user out.
  */
 
 export interface ApiRequestInput {
@@ -19,65 +15,6 @@ export interface ApiRequestInput {
   body?: unknown
   query?: Record<string, string | number | undefined | null>
 }
-
-interface ApiResult {
-  ok: boolean
-  status: number
-  /** Raw response body text (parsed on the client) so the result stays serializable. */
-  body: string | null
-}
-
-function backendBaseUrl(): string {
-  return (
-    process.env.API_BASE_URL ??
-    process.env.VITE_API_URL ??
-    'http://localhost:1234'
-  )
-}
-
-export const apiRequestFn = createServerFn({ method: 'POST' })
-  .inputValidator((input: ApiRequestInput) => input)
-  .handler(async ({ data }): Promise<ApiResult> => {
-    const token = await getBackendToken()
-    if (!token) {
-      return {
-        ok: false,
-        status: 401,
-        body: JSON.stringify({ message: 'Not authenticated' }),
-      }
-    }
-
-    const url = new URL(`${backendBaseUrl()}${data.path}`)
-    if (data.query) {
-      for (const [key, value] of Object.entries(data.query)) {
-        if (value !== undefined && value !== null && value !== '') {
-          url.searchParams.set(key, String(value))
-        }
-      }
-    }
-
-    const method = data.method ?? 'GET'
-    let res: Response
-    try {
-      res = await fetch(url, {
-        method,
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${token}`,
-        },
-        body: data.body !== undefined ? JSON.stringify(data.body) : undefined,
-      })
-    } catch {
-      return {
-        ok: false,
-        status: 502,
-        body: JSON.stringify({ message: 'Cannot reach the server' }),
-      }
-    }
-
-    const text = await res.text()
-    return { ok: res.ok, status: res.status, body: text || null }
-  })
 
 export class ApiError extends Error {
   status: number
@@ -95,15 +32,6 @@ export function setUnauthorizedHandler(handler: (() => void) | null) {
   unauthorizedHandler = handler
 }
 
-function parseBody(body: string | null): unknown {
-  if (!body) return null
-  try {
-    return JSON.parse(body)
-  } catch {
-    return body
-  }
-}
-
 function messageFrom(data: unknown, status: number): string {
   if (typeof data === 'string' && data) return data
   if (data && typeof data === 'object' && 'message' in data) {
@@ -114,13 +42,43 @@ function messageFrom(data: unknown, status: number): string {
 }
 
 export async function api<T>(input: ApiRequestInput): Promise<T> {
-  const result = await apiRequestFn({ data: input })
-  const data = parseBody(result.body)
-  if (!result.ok) {
-    if (result.status === 401 || result.status === 403) {
+  const url = new URL(`${API_URL}${input.path}`)
+  if (input.query) {
+    for (const [key, value] of Object.entries(input.query)) {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.set(key, String(value))
+      }
+    }
+  }
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method: input.method ?? 'GET',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: input.body !== undefined ? JSON.stringify(input.body) : undefined,
+    })
+  } catch {
+    throw new ApiError(502, 'Cannot reach the server')
+  }
+
+  const text = await res.text()
+  let data: unknown = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = text
+    }
+  }
+
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
       unauthorizedHandler?.()
     }
-    throw new ApiError(result.status, messageFrom(data, result.status))
+    throw new ApiError(res.status, messageFrom(data, res.status))
   }
+
   return data as T
 }

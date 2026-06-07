@@ -1,6 +1,6 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useRouter } from '@tanstack/react-router'
 import { LogOut, UserCircle } from 'lucide-react'
-import { Avatar, AvatarFallback } from '#/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Button } from '#/components/ui/button'
 import {
   DropdownMenu,
@@ -11,19 +11,27 @@ import {
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
 import { Badge } from '#/components/ui/badge'
-import { useAuth } from '#/lib/auth-client'
+import { authClient, useAuth } from '#/lib/auth-client'
 
 export function UserMenu() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
+  const router = useRouter()
   if (!user) return null
 
-  const initials = `${user.name?.[0] ?? user.username[0] ?? 'U'}`.toUpperCase()
+  const initials = `${user.name?.[0] ?? user.email[0] ?? 'U'}`.toUpperCase()
+
+  const handleSignOut = async () => {
+    await authClient.signOut()
+    await router.invalidate()
+    await router.navigate({ to: '/login' })
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-9 gap-2 px-2">
           <Avatar className="h-7 w-7">
+            {user.image && <AvatarImage src={user.image} alt={user.name} />}
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <span className="hidden text-sm font-medium sm:inline">
@@ -37,9 +45,9 @@ export function UserMenu() {
             {user.name} {user.lastname}
           </span>
           <span className="text-xs font-normal text-muted-foreground">
-            @{user.username}
+            {user.email}
           </span>
-          {user.role === 'Admin' && (
+          {user.role === 'admin' && (
             <Badge variant="secondary" className="mt-1 w-fit">
               Admin
             </Badge>
@@ -52,7 +60,7 @@ export function UserMenu() {
             Profile
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void signOut()}>
+        <DropdownMenuItem onClick={() => void handleSignOut()}>
           <LogOut className="mr-2 h-4 w-4" />
           Sign out
         </DropdownMenuItem>

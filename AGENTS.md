@@ -80,7 +80,9 @@ pnpm add sonner @tanstack/react-store @tanstack/store
 
 - TanStack **Start** (SSR) + **Router** (file routes, guards) + **Query** + **Table** + **Form** + **Store**
 - TanStack **CLI** + **Intent** (scaffolding + skills)
-- **better-auth** mounted at `/api/auth/*` (partner: required); **shadcn/ui** (New York, zinc) + Tailwind v4
+- **better-auth** via its **React client** (`better-auth/react`) talking to the
+  backend's `/api/auth/*` (auth lives on the Express backend, not here);
+  **shadcn/ui** (New York, zinc) + Tailwind v4
 - Deployment: **Railway** (`nixpacks.toml`, switched to pnpm)
 
 ## Local dev
@@ -99,29 +101,33 @@ MoneyManagerBackend).
 
 | Var | Purpose |
 |-----|---------|
-| `VITE_API_URL` / `API_BASE_URL` | Express backend base URL (server-side proxy target). Defaults to `http://localhost:1234`. |
-| `BETTER_AUTH_SECRET` | Session-cookie sealing secret (>= 32 chars). |
-| `BETTER_AUTH_URL` | Better Auth base URL (e.g. `http://localhost:3000`). |
+| `VITE_API_URL` | Backend base URL read **in the browser**; Better Auth client + data calls hit it directly with `credentials: 'include'`. Defaults to `http://localhost:1234`. |
+| `API_BASE_URL` | Same backend URL read **on the Start server** for the SSR session lookup. Keep in sync with `VITE_API_URL`. |
 
-See `.env.example`. Local values live in `.env.local` (gitignored).
+There are no `BETTER_AUTH_*` vars on the frontend anymore — auth (and its
+secret) live entirely on the backend. See `.env.example`; local values live in
+`.env.local` (gitignored).
 
 ## Architecture / key decisions
 
-- **Auth proxies the backend.** The Express API owns users. `src/lib/auth.ts`
-  exposes TanStack Start server functions (`signInFn`, `signUpFn`, `signOutFn`,
-  `fetchSessionFn`) that call `POST /login` and `POST /user`, then persist the
-  backend JWT + user (`id`, `role`, ...) in a sealed httpOnly cookie via Start's
-  `useSession`. The raw JWT never reaches client JS.
-- better-auth (`src/lib/better-auth.ts`) stays mounted at `/api/auth/*` as the
-  required partner integration; its built-in email/password store is not used
-  because the backend is the source of truth.
-- **API access** goes through `apiRequestFn` (server fn in `src/lib/api.ts`),
-  which reads the JWT server-side and adds `Authorization: Bearer`. The client
-  `api()` helper triggers sign-out on 401/403.
-- **Route guards**: `src/routes/_authenticated.tsx` redirects unauthenticated
-  users to `/login`; `src/routes/_authenticated/_admin.tsx` requires
-  `role === 'Admin'`. Session is loaded in the root `beforeLoad` and flows
-  through router context (`context.user`).
+- **Auth lives on the backend.** Better Auth runs on the Express API at
+  `/api/auth/*` (email/password + Google + GitHub, cookie sessions, admin
+  plugin). The frontend uses the Better Auth **React client**
+  (`src/lib/auth-client.ts`, `createAuthClient` + `adminClient` +
+  `inferAdditionalFields` for `lastname`) pointed at `VITE_API_URL`.
+  `useAuth()` wraps `authClient.useSession()` and exposes `{ user, isAdmin }`.
+- **Sign-in/up/out** are called directly on `authClient` from the auth pages
+  (`signIn.email`, `signIn.social({ provider })`, `signUp.email`, `signOut`);
+  profile changes use `authClient.updateUser / changePassword / deleteUser`.
+- **SSR session for guards**: `src/lib/session.ts` exposes `fetchUserFn`, a Start
+  server function that forwards the incoming `Cookie` header to the backend's
+  `/api/auth/get-session`. The root `beforeLoad` puts the result on router
+  context (`context.user`); the cookie is never read by client JS.
+- **API access**: `src/lib/api.ts` `api()` is a direct `fetch` to `VITE_API_URL`
+  with `credentials: 'include'`; 401/403 triggers `authClient.signOut()` +
+  redirect to `/login`.
+- **Route guards**: `_authenticated.tsx` redirects anonymous users to `/login`;
+  `_authenticated/_admin.tsx` requires `role === 'admin'` (roles are lowercase).
 - **TanStack Store** (`src/lib/store.ts`) holds the shared date-range filter and
   theme mode.
 - **Query keys** centralized in `src/lib/query-keys.ts`; mutations invalidate
@@ -133,13 +139,15 @@ See `.env.example`. Local values live in `.env.local` (gitignored).
 - Moving `node_modules` across folders breaks pnpm's virtual store; run a clean
   `pnpm install` after relocating.
 - Date inputs are `YYYY-MM-DD`; POST/PATCH bodies send ISO datetimes.
-- The generic API proxy is safe because the backend scopes every resource to the
-  JWT user; still, never expose it to untrusted origins.
+- **Cookies**: in local dev the backend's host-only `localhost` session cookie is
+  shared across ports, so SSR cookie-forwarding works. In production with
+  different domains, set the backend cookie to `SameSite=None; Secure`, serve
+  both over HTTPS, and set the backend `FRONTEND_ORIGIN` to the exact origin.
+- `user.id` is a **string** (Better Auth), and `role` is `'admin' | 'user'`.
 
 ## Next steps
 
 - Add pagination/server-side filtering for large transaction lists.
-- Replace the dev `BETTER_AUTH_SECRET` with a real secret in Railway env.
-- Optionally add a real Better Auth credentials plugin if local session
-  management beyond the JWT is needed.
+- Configure real Google/GitHub OAuth credentials in the backend env.
+- Consider email verification for the email/password flow.
 

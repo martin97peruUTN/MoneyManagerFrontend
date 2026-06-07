@@ -35,8 +35,7 @@ function AdminUsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Username</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Role</TableHead>
               </TableRow>
@@ -44,16 +43,13 @@ function AdminUsersPage() {
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="text-muted-foreground">
-                    {user.id}
-                  </TableCell>
-                  <TableCell>@{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
                   <TableCell>
                     {user.name} {user.lastname}
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={user.role === 'Admin' ? 'default' : 'secondary'}
+                      variant={user.role === 'admin' ? 'default' : 'secondary'}
                     >
                       {user.role}
                     </Badge>

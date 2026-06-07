@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { Link } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
@@ -15,7 +15,7 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Alert, AlertDescription } from '#/components/ui/alert'
 import { FieldError } from '#/components/form/field-error'
-import { useAuth } from '#/lib/auth-client'
+import { authClient } from '#/lib/auth-client'
 
 export const Route = createFileRoute('/register')({
   beforeLoad: ({ context }) => {
@@ -27,20 +27,32 @@ export const Route = createFileRoute('/register')({
 })
 
 function RegisterPage() {
-  const { signUp } = useAuth()
-  const navigate = Route.useNavigate()
+  const router = useRouter()
   const [formError, setFormError] = useState<string | null>(null)
 
+  const signUpSocial = (provider: 'google' | 'github') => {
+    void authClient.signIn.social({
+      provider,
+      callbackURL: `${window.location.origin}/`,
+    })
+  }
+
   const form = useForm({
-    defaultValues: { username: '', password: '', name: '', lastname: '' },
+    defaultValues: { email: '', password: '', name: '', lastname: '' },
     onSubmit: async ({ value }) => {
       setFormError(null)
-      const result = await signUp(value)
-      if (result.error) {
-        setFormError(result.error)
+      const { error } = await authClient.signUp.email({
+        email: value.email.trim(),
+        password: value.password,
+        name: value.name.trim(),
+        lastname: value.lastname.trim(),
+      })
+      if (error) {
+        setFormError(error.message ?? 'Could not create the account')
         return
       }
-      await navigate({ to: '/' })
+      await router.invalidate()
+      await router.navigate({ to: '/' })
     },
   })
 
@@ -57,6 +69,29 @@ function RegisterPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => signUpSocial('google')}
+            >
+              Google
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => signUpSocial('github')}
+            >
+              GitHub
+            </Button>
+          </div>
+
+          <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or sign up with email
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
           <form
             className="space-y-4"
             onSubmit={(e) => {
@@ -108,21 +143,22 @@ function RegisterPage() {
             </div>
 
             <form.Field
-              name="username"
+              name="email"
               validators={{
                 onChange: ({ value }) =>
-                  value.trim().length >= 3
+                  value.trim().includes('@')
                     ? undefined
-                    : 'At least 3 characters',
+                    : 'A valid email is required',
               }}
             >
               {(field) => (
                 <div className="space-y-1.5">
-                  <Label htmlFor={field.name}>Username</Label>
+                  <Label htmlFor={field.name}>Email</Label>
                   <Input
                     id={field.name}
+                    type="email"
                     value={field.state.value}
-                    autoComplete="username"
+                    autoComplete="email"
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}
                   />
@@ -135,7 +171,7 @@ function RegisterPage() {
               name="password"
               validators={{
                 onChange: ({ value }) =>
-                  value.length >= 6 ? undefined : 'At least 6 characters',
+                  value.length >= 8 ? undefined : 'At least 8 characters',
               }}
             >
               {(field) => (

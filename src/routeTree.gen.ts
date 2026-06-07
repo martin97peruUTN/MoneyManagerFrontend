@@ -19,7 +19,6 @@ import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedCategoriesRouteImport } from './routes/_authenticated/categories'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/_admin'
 import { Route as AuthenticatedAccountsIndexRouteImport } from './routes/_authenticated/accounts/index'
-import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthenticatedAccountsAccountIdRouteImport } from './routes/_authenticated/accounts/$accountId'
 import { Route as AuthenticatedAdminAdminUsersRouteImport } from './routes/_authenticated/_admin/admin.users'
 import { Route as AuthenticatedAdminAdminCurrenciesRouteImport } from './routes/_authenticated/_admin/admin.currencies'
@@ -74,11 +73,6 @@ const AuthenticatedAccountsIndexRoute =
     path: '/accounts/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
-  id: '/api/auth/$',
-  path: '/api/auth/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedAccountsAccountIdRoute =
   AuthenticatedAccountsAccountIdRouteImport.update({
     id: '/accounts/$accountId',
@@ -107,7 +101,6 @@ export interface FileRoutesByFullPath {
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/transfers': typeof AuthenticatedTransfersRoute
   '/accounts/$accountId': typeof AuthenticatedAccountsAccountIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/admin/currencies': typeof AuthenticatedAdminAdminCurrenciesRoute
   '/admin/users': typeof AuthenticatedAdminAdminUsersRoute
@@ -121,7 +114,6 @@ export interface FileRoutesByTo {
   '/transactions': typeof AuthenticatedTransactionsRoute
   '/transfers': typeof AuthenticatedTransfersRoute
   '/accounts/$accountId': typeof AuthenticatedAccountsAccountIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/accounts': typeof AuthenticatedAccountsIndexRoute
   '/admin/currencies': typeof AuthenticatedAdminAdminCurrenciesRoute
   '/admin/users': typeof AuthenticatedAdminAdminUsersRoute
@@ -138,7 +130,6 @@ export interface FileRoutesById {
   '/_authenticated/transfers': typeof AuthenticatedTransfersRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/accounts/$accountId': typeof AuthenticatedAccountsAccountIdRoute
-  '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authenticated/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/_authenticated/_admin/admin/currencies': typeof AuthenticatedAdminAdminCurrenciesRoute
   '/_authenticated/_admin/admin/users': typeof AuthenticatedAdminAdminUsersRoute
@@ -154,7 +145,6 @@ export interface FileRouteTypes {
     | '/transactions'
     | '/transfers'
     | '/accounts/$accountId'
-    | '/api/auth/$'
     | '/accounts/'
     | '/admin/currencies'
     | '/admin/users'
@@ -168,7 +158,6 @@ export interface FileRouteTypes {
     | '/transactions'
     | '/transfers'
     | '/accounts/$accountId'
-    | '/api/auth/$'
     | '/accounts'
     | '/admin/currencies'
     | '/admin/users'
@@ -184,7 +173,6 @@ export interface FileRouteTypes {
     | '/_authenticated/transfers'
     | '/_authenticated/'
     | '/_authenticated/accounts/$accountId'
-    | '/api/auth/$'
     | '/_authenticated/accounts/'
     | '/_authenticated/_admin/admin/currencies'
     | '/_authenticated/_admin/admin/users'
@@ -194,7 +182,6 @@ export interface RootRouteChildren {
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
-  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -269,13 +256,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/api/auth/$': {
-      id: '/api/auth/$'
-      path: '/api/auth/$'
-      fullPath: '/api/auth/$'
-      preLoaderRoute: typeof ApiAuthSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/accounts/$accountId': {
       id: '/_authenticated/accounts/$accountId'
       path: '/accounts/$accountId'
@@ -344,7 +324,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
