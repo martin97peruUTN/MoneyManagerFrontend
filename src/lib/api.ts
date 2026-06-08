@@ -3,10 +3,9 @@ import { API_URL } from '#/lib/auth-client'
 /**
  * Authed API layer.
  *
- * Requests go directly to the Express backend with `credentials: 'include'`, so
- * the Better Auth session cookie (set on the backend origin) is sent
- * automatically. The backend scopes every resource to the session user. On
- * 401/403 the registered unauthorized handler signs the user out.
+ * Requests go to the API with `credentials: 'include'`. In production the
+ * browser uses same-origin `/api/*` (proxied to the backend); in dev it talks
+ * directly to `VITE_API_URL`.
  */
 
 export interface ApiRequestInput {
@@ -42,7 +41,14 @@ function messageFrom(data: unknown, status: number): string {
 }
 
 export async function api<T>(input: ApiRequestInput): Promise<T> {
-  const url = new URL(`${API_URL}${input.path}`)
+  const url = API_URL
+    ? new URL(`${API_URL}${input.path}`)
+    : new URL(
+        input.path,
+        typeof window !== 'undefined'
+          ? window.location.origin
+          : 'http://localhost:3000',
+      )
   if (input.query) {
     for (const [key, value] of Object.entries(input.query)) {
       if (value !== undefined && value !== null && value !== '') {
