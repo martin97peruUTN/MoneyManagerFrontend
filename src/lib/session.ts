@@ -3,18 +3,13 @@ import { getRequest } from '@tanstack/react-start/server'
 import type { Role, SessionUser } from '#/types'
 
 function resolveServerApiBase(): string {
-  const explicit = process.env.API_BASE_URL?.replace(/\/$/, '')
-  if (explicit) return explicit
-
-  // When Nitro proxies /api to BACKEND_URL, SSR should call the local server so
-  // the browser's session cookie (first-party on this host) is forwarded.
+  // Production proxy: SSR calls the local Nitro server so the session cookie
+  // (first-party on this host) is forwarded to the backend.
   if (process.env.BACKEND_URL && process.env.PORT) {
     return `http://127.0.0.1:${process.env.PORT}`
   }
 
-  return (
-    process.env.VITE_API_URL?.replace(/\/$/, '') ?? 'http://localhost:1234'
-  )
+  return process.env.VITE_API_URL?.replace(/\/$/, '') ?? 'http://localhost:1234'
 }
 
 interface BackendSession {

@@ -99,14 +99,12 @@ MoneyManagerBackend).
 
 ## Environment variables
 
-| Var | Purpose |
-|-----|---------|
-| `VITE_API_URL` | Backend base URL read **in the browser**; Better Auth client + data calls hit it directly with `credentials: 'include'`. Defaults to `http://localhost:1234`. |
-| `API_BASE_URL` | Same backend URL read **on the Start server** for the SSR session lookup. Keep in sync with `VITE_API_URL`. |
+| Var | Dev | Production |
+|-----|-----|------------|
+| `VITE_API_URL` | optional (`http://localhost:1234` default) | **unset** (same-origin `/api/*`) |
+| `BACKEND_URL` | unset | backend Render URL (build-time proxy target) |
 
-There are no `BETTER_AUTH_*` vars on the frontend anymore — auth (and its
-secret) live entirely on the backend. See `.env.example`; local values live in
-`.env.local` (gitignored).
+No `API_BASE_URL` or `BETTER_AUTH_*` on the frontend. See `.env.example`; local overrides in `.env.local` (gitignored).
 
 ## Architecture / key decisions
 
@@ -151,23 +149,11 @@ secret) live entirely on the backend. See `.env.example`; local values live in
 2. Render → **New** → **Web Service** (or **Blueprint** if using `render.yaml`).
 3. **Build command**: `pnpm install --frozen-lockfile && pnpm run build`
 4. **Start command**: `pnpm start`
-5. **Environment** (both required; use your Render **backend** URL):
+5. **Environment**: `BACKEND_URL` only (leave `VITE_API_URL` unset). Redeploy after changing `BACKEND_URL` (build-time).
 
-   | Variable | Example |
-   |----------|---------|
-   | `BACKEND_URL` | `https://money-manager-backend.onrender.com` |
-   | `VITE_API_URL` | leave **empty** (browser uses same-origin `/api/*` via proxy) |
+6. On the **backend** Render service: `FRONTEND_ORIGIN` = this frontend URL (also drives auth URLs in production).
 
-   `BACKEND_URL` is read at **build time** to configure the Nitro proxy. Redeploy after changing it.
-
-6. On the **backend** Render service:
-
-   | Variable | Value |
-   |----------|--------|
-   | `FRONTEND_ORIGIN` | `https://your-frontend.onrender.com` |
-   | `BETTER_AUTH_URL` | same frontend URL (auth goes through the proxy) |
-
-7. OAuth callback URLs (via proxy): `{FRONTEND_ORIGIN}/api/auth/callback/google` and `/callback/github`.
+7. OAuth callbacks: `{FRONTEND_ORIGIN}/api/auth/callback/google` and `/callback/github`.
 
 Both apps on Render free tier spin down when idle (~30s cold start). HTTPS is automatic.
 
