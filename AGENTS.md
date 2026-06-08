@@ -83,7 +83,7 @@ pnpm add sonner @tanstack/react-store @tanstack/store
 - **better-auth** via its **React client** (`better-auth/react`) talking to the
   backend's `/api/auth/*` (auth lives on the Express backend, not here);
   **shadcn/ui** (New York, zinc) + Tailwind v4
-- Deployment: **Railway** (`nixpacks.toml`, switched to pnpm)
+- Deployment: **Render** (`render.yaml`, Node 22, pnpm) or Railway (`nixpacks.toml`)
 
 ## Local dev
 
@@ -144,6 +144,25 @@ secret) live entirely on the backend. See `.env.example`; local values live in
   different domains, set the backend cookie to `SameSite=None; Secure`, serve
   both over HTTPS, and set the backend `FRONTEND_ORIGIN` to the exact origin.
 - `user.id` is a **string** (Better Auth), and `role` is `'admin' | 'user'`.
+
+## Render deploy
+
+1. Push this repo to GitHub.
+2. Render → **New** → **Web Service** (or **Blueprint** if using `render.yaml`).
+3. **Build command**: `pnpm install --frozen-lockfile && pnpm run build`
+4. **Start command**: `pnpm start`
+5. **Environment** (both required; use your Render **backend** URL):
+
+   | Variable | Example |
+   |----------|---------|
+   | `VITE_API_URL` | `https://money-manager-backend.onrender.com` |
+   | `API_BASE_URL` | same as above |
+
+   `VITE_API_URL` is baked into the client bundle at **build time** — set it before the first deploy (or redeploy after changing it).
+
+6. On the **backend** Render service, set `FRONTEND_ORIGIN` to this frontend URL (exact origin, no trailing slash).
+
+Both apps on Render free tier spin down when idle (~30s cold start). HTTPS is automatic.
 
 ## Next steps
 
