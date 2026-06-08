@@ -2,13 +2,17 @@ import { createAuthClient } from 'better-auth/react'
 import { adminClient, inferAdditionalFields } from 'better-auth/client/plugins'
 import type { Role, SessionUser } from '#/types'
 
-/** Backend origin that hosts Better Auth at `/api/auth/*`. */
+/** Backend origin for `/api/*`. Empty = same origin (production proxy mode). */
+const configured = (import.meta.env.VITE_API_URL as string | undefined)?.replace(
+  /\/$/,
+  '',
+)
 export const API_URL =
-  (import.meta.env.VITE_API_URL as string | undefined) ??
-  'http://localhost:1234'
+  configured ?? (import.meta.env.DEV ? 'http://localhost:1234' : '')
 
 export const authClient = createAuthClient({
-  baseURL: API_URL,
+  baseURL: API_URL || undefined,
+  fetchOptions: { credentials: 'include' },
   plugins: [
     adminClient(),
     inferAdditionalFields({

@@ -155,12 +155,19 @@ secret) live entirely on the backend. See `.env.example`; local values live in
 
    | Variable | Example |
    |----------|---------|
-   | `VITE_API_URL` | `https://money-manager-backend.onrender.com` |
-   | `API_BASE_URL` | same as above |
+   | `BACKEND_URL` | `https://money-manager-backend.onrender.com` |
+   | `VITE_API_URL` | leave **empty** (browser uses same-origin `/api/*` via proxy) |
 
-   `VITE_API_URL` is baked into the client bundle at **build time** — set it before the first deploy (or redeploy after changing it).
+   `BACKEND_URL` is read at **build time** to configure the Nitro proxy. Redeploy after changing it.
 
-6. On the **backend** Render service, set `FRONTEND_ORIGIN` to this frontend URL (exact origin, no trailing slash).
+6. On the **backend** Render service:
+
+   | Variable | Value |
+   |----------|--------|
+   | `FRONTEND_ORIGIN` | `https://your-frontend.onrender.com` |
+   | `BETTER_AUTH_URL` | same frontend URL (auth goes through the proxy) |
+
+7. OAuth callback URLs (via proxy): `{FRONTEND_ORIGIN}/api/auth/callback/google` and `/callback/github`.
 
 Both apps on Render free tier spin down when idle (~30s cold start). HTTPS is automatic.
 
